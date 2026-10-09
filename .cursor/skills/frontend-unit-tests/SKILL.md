@@ -5,7 +5,9 @@ description: Write Vitest and Testing Library tests for React components and hoo
 
 # Frontend unit tests
 
-Match the existing files under `frontend/src`. Colocate `*.test.ts` or `*.test.tsx`. One source file per step. Run it before the next file.
+Match the existing files under `frontend/src`. Colocate `*.test.ts` or `*.test.tsx`. One source file per step. Run it before the next file. Do not finish while that file is failing.
+
+Render the component or hook under test with React Testing Library. Assert the text, the accessible name, or the value the callback receives. Mock `fetch` or the API module at the boundary. Mock the design system only the way the neighboring test already does. Do not replace the screen under test with a stub component.
 
 ## Steps
 

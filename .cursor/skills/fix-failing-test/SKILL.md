@@ -5,7 +5,7 @@ description: Retry a failing new test at most three times without weakening the 
 
 # Fix a failing new test
 
-Use this only for a test you added in this run. Stop after three attempts.
+Use this only for a test you added in this run. Stop at `max-fix-attempts` in `scripts/agent/cursor-cli.version` (3). The tree you leave behind must pass. Delete the new test rather than leave it red.
 
 ## Steps
 

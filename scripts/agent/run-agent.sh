@@ -10,11 +10,15 @@ if [ -z "${CURSOR_API_KEY:-}" ]; then
 fi
 
 prompt="$(cat scripts/agent/prompt.md)"
-model="$(node -e 'const {readFileSync}=require("node:fs"); const text=readFileSync("scripts/agent/cursor-cli.version","utf8"); const line=text.split(/\n/).find((entry)=>entry.startsWith("model=")); if(!line) process.exit(1); process.stdout.write(line.slice(6));')"
+read_pin() {
+  node -e 'const {readFileSync}=require("node:fs"); const key=process.argv[1]; const text=readFileSync("scripts/agent/cursor-cli.version","utf8"); const line=text.split(/\n/).find((entry)=>entry.startsWith(key+"=")); if(!line) process.exit(1); process.stdout.write(line.slice(key.length+1));' "$1"
+}
+model="$(read_pin model)"
+timeout_seconds="$(read_pin timeout-seconds)"
 
 # --force applies edits in print mode. Deny rules in .cursor/cli.json still win.
 # Sandbox stays off so the agent can execute vitest. The deny list blocks push, commit, install, and downloads.
-timeout --signal=TERM 12m "${AGENT_BIN}" \
+timeout --signal=TERM "${timeout_seconds}" "${AGENT_BIN}" \
   -p \
   --force \
   --trust \

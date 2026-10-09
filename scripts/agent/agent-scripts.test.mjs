@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -11,7 +11,7 @@ import { disallowedPaths } from './guard-test-only-changes.mjs';
 import { assertChecksum, parseVersionFile } from './install-cursor-cli.mjs';
 import { COMMENT_MARKER, commentBody, findStickyComment } from './publish-comment.mjs';
 import { filesContainingSecret } from './reject-secret.mjs';
-import { renderReport } from './render-report.mjs';
+import { loadBudget, renderReport } from './render-report.mjs';
 import { groupTestFiles } from './run-changed-tests.mjs';
 
 const ready = {
@@ -128,6 +128,12 @@ test('coverage delta and the report quote recorded evidence', () => {
   assert.match(markdown, /2 passed/);
   assert.match(markdown, /30% → 92%/);
   assert.match(markdown, /Flaky check: passed/);
+  const budget = loadBudget(readFileSync(new URL('./cursor-cli.version', import.meta.url), 'utf8'));
+  assert.equal(budget.model, 'claude-opus-4-8');
+  assert.equal(budget.maxSourceFiles, 8);
+  const withBudget = renderReport({ report: {}, budget });
+  assert.match(withBudget, /claude-opus-4-8/);
+  assert.match(withBudget, /A human merges/);
 });
 
 test('checksum comparison fails closed and the secret scan returns paths only', () => {

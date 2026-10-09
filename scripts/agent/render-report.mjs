@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+import { parseVersionFile } from './install-cursor-cli.mjs';
 
 function readJson(file, fallback) {
   if (!file) return fallback;
@@ -27,7 +28,18 @@ function coverageLines(coverage) {
   return lines;
 }
 
-export function renderReport({ report, coverage, tests, verify, failure }) {
+export function loadBudget(versionText) {
+  const pin = parseVersionFile(versionText);
+  return {
+    version: pin.version,
+    model: pin.model,
+    timeoutSeconds: Number(pin['timeout-seconds']),
+    maxSourceFiles: Number(pin['max-source-files']),
+    maxFixAttempts: Number(pin['max-fix-attempts']),
+  };
+}
+
+export function renderReport({ report, coverage, tests, verify, failure, budget }) {
   const plan = Array.isArray(report?.plan) ? report.plan : [];
   const decisions = Array.isArray(report?.decisions) ? report.decisions : [];
   const skills = Array.isArray(report?.skillsUsed) ? report.skillsUsed : [];
@@ -68,6 +80,16 @@ export function renderReport({ report, coverage, tests, verify, failure }) {
     for (const bug of bugs) lines.push(`- ${bug}`);
   }
   if (report?.notes) lines.push('', '### Notes', '', report.notes);
+  lines.push('', '### Cost', '');
+  if (!budget) {
+    lines.push('Budget was not recorded.', '');
+  } else {
+    lines.push(`- Model: \`${budget.model}\`. CLI pin: \`${budget.version}\`.`);
+    lines.push(`- Timeout: ${budget.timeoutSeconds} seconds. This CLI build has no max-turn flag, so the process is killed at the timeout.`);
+    lines.push(`- Turn budget: ${budget.maxSourceFiles} source files, ${budget.maxFixAttempts} retries on a failing new test.`);
+    lines.push('- Reads stay on the changed source, its test, and `.cursor/skills`. `node_modules`, `.git`, coverage output, and `.env` files are denied.');
+    lines.push('- A red test run does not commit. This comment proposes the patch. A human merges.');
+  }
   lines.push('', 'Artifacts: `unit-test-agent-output` and `unit-test-verify` on this workflow run.');
   return `${lines.join('\n')}\n`;
 }
@@ -85,6 +107,7 @@ if (isMain) {
     tests: readJson(flag('--tests'), null),
     verify: readJson(flag('--verify'), null),
     failure: flag('--failure'),
+    budget: loadBudget(readFileSync(new URL('./cursor-cli.version', import.meta.url), 'utf8')),
   });
   process.stdout.write(markdown);
 }

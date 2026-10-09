@@ -3,7 +3,12 @@
   "editor": { "vimMode": false },
   "permissions": {
     "allow": [
-      "Read(**)",
+      "Read(backend/**)",
+      "Read(frontend/src/**)",
+      "Read(.cursor/**)",
+      "Read(scripts/agent/**)",
+      "Read(changed-files.json)",
+      "Read(SOLUTION.md)",
       "Write(backend/tests/**)",
       "Write(frontend/src/**/*.test.ts)",
       "Write(frontend/src/**/*.test.tsx)",
@@ -46,6 +51,11 @@
       "Write(.env*)",
       "Read(.env*)",
       "Read(**/.env*)",
+      "Read(**/node_modules/**)",
+      "Read(.git/**)",
+      "Read(**/coverage/**)",
+      "Read(**/dist/**)",
+      "Read(.github/**)",
       "WebFetch(*)",
       "Mcp(*:*)"
     ]

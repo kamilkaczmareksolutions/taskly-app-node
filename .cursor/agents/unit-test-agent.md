@@ -19,12 +19,15 @@ You add or extend unit tests for the changed source listed in `changed-files.jso
 
 ## Working loop
 
-1. Plan before editing. Read the changed-file list and the source it names. Write `plan` in `agent-report.json` first. Each entry is `test` or `skip` plus a reason.
-2. Take one planned source file at a time. Finish its test command before you open the next file.
-3. Prove the test. Run the test file. Put the command, exit code, and a one-line result in `evidence`. Mark the file `tested` only when that command exited 0. If you did not run it, do not claim it passed.
-4. Retry a failing new test at most 3 times, using the `fix-failing-test` skill. Do not weaken the assertion. Do not edit production code. On the fourth failure, delete the new test and add a suspected bug.
-5. Skip with a reason when a file is docs, config, a story, types only, styling only, or a change with no new behavior. `skipped` without a reason is incomplete.
-6. Write the final `agent-report.json` from the plan, the decisions, and the commands you ran. The workflow runs the tests again. Your report must match those commands.
+The budget is `timeout-seconds`, `max-source-files`, and `max-fix-attempts` in `scripts/agent/cursor-cli.version`. The model is the `model` line in that file. Read only the changed source, its existing test, and the skill you are following.
+
+1. Plan before editing. Write `plan` in `agent-report.json` first. Each entry is `test` or `skip` plus a reason.
+2. Take one planned source file at a time, and stop at `max-source-files`. Finish its test command before you open the next file.
+3. Match the repo. Backend tests use Vitest and Supertest, spy on Prisma delegates, and never open Postgres. Assert the status, the body, trimming, and the error text. A bad input must not call the write. Frontend tests render the component or hook and assert the text or the callback result. Do not stub the screen you are testing. A Zod change gets a table of boundaries, in the style of `backend/tests/validators.test.ts`.
+4. Prove the test. Run the test file. Put the command, exit code, and a one-line result in `evidence`. Mark the file `tested` only when that command exited 0.
+5. Retry a failing new test at most `max-fix-attempts` times, using the `fix-failing-test` skill. Do not weaken the assertion. Do not edit production code. If it still fails, delete the new test and add a suspected bug. Do not finish the turn while a test you kept is failing.
+6. Skip with a reason when a file is docs, config, a story, types only, styling only, over the file budget, or a change with no new behavior.
+7. Write the final `agent-report.json` from the plan, the decisions, and the commands you ran. The workflow runs the tests again and refuses to commit a red run. A human merges the pull request.
 
 ## Output contract
 

@@ -5,7 +5,9 @@ description: Write Vitest and Supertest tests for the Express app with Prisma de
 
 # Backend unit tests
 
-Match `backend/tests/repository.test.ts` and `backend/tests/router.test.ts`. One source file per step. Run the new test file before starting another.
+Match `backend/tests/repository.test.ts`, `backend/tests/router.test.ts`, and `backend/tests/validators.test.ts`. One source file per step. Run the new test file before starting another. Do not finish while that file is failing.
+
+Use Vitest and Supertest. Build the app with `createApp` or the router factory. Spy on Prisma with `vi.spyOn(database.todo, ...)`. Do not start Postgres. Assert the status, the JSON body, trimming, and the error text. When input is invalid, assert the status is 422 and the repository write was not called. For a new Zod schema, add a dense table: empty, whitespace, the max length, one past the max, and one valid value.
 
 ## Steps
 

@@ -5,7 +5,7 @@ description: Write agent-report.json from the plan, decisions, skills, and comma
 
 # Report for the pull request
 
-You write the report file. You do not post it. The publish job renders the comment from this file plus the workflow's own test runs.
+You write the report file. You do not post it and you do not merge. The publish job renders the comment from this file, the workflow's own test runs, and the cost lines in `scripts/agent/cursor-cli.version`. A human merges.
 
 ## Steps
 

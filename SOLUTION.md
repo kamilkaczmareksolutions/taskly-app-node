@@ -18,7 +18,9 @@ Verify runs typecheck and coverage on a clean checkout plus the patch. That run,
 
 Actions are pinned to full commit SHAs. `actions: write` is on the jobs that upload artifacts. `contents: read` alone cannot upload them.
 
-The agent follows six working rules. It writes a plan before it edits. It changes one source file at a time. It runs the test before it marks the file tested. The report quotes those commands, and the workflow runs the tests again. It skips a file only with a reason. It retries a failing new test at most three times, and it does not weaken the assertion or edit production code.
+The agent follows six working rules. It writes a plan before it edits. It changes one source file at a time. It runs the test before it marks the file tested. The report quotes those commands, and the workflow runs the tests again. It skips a file only with a reason. It retries a failing new test at most three times, and it does not weaken the assertion or edit production code. It does not finish while a test it kept is failing. A red guard or verify job does not commit. The bot proposes the patch. A human merges.
+
+Cost is bounded in `scripts/agent/cursor-cli.version`: model `claude-opus-4-8`, a 720 second timeout, 8 source files, and 3 fix attempts. This CLI build has no max-turn flag and no dollar cap. The report prints those numbers. `--force` still honors deny rules, so reads of `node_modules`, `.git`, coverage, and `.env` stay denied. The prompt tells the agent to read only the changed source, its test, and the skill it is using.
 
 `frontend` `format:check` fails on the base commit because `index.html` is not formatted, so CI does not run it. `backend/src/main.ts` stays in the coverage set. The factory branch that runs after headers are sent, and the lifespan timeout that calls `process.exit`, stay untested on purpose. Hitting them would exit the process or need a response that has already started.
 
@@ -87,3 +89,5 @@ The model can write a different test on each run. A hostile diff can still confu
 ## 7. Production extensions
 
 Use a GitHub App token when the bot must retrigger checks or act across repositories. Add mutation testing, a label or a comment command to start a run, dependency caching beyond npm, a recorded set of model runs, a rate limit, and an environment protection rule on the secret.
+
+GitHub Agentic Workflows (`gh-aw`) compile a markdown workflow into Actions. The agent runs in that action, and safe outputs are the only way it can comment or open a pull request. An MCP variant would expose "read this file" and "run this test" as tools on a server, and the server would refuse every other call. This repo uses the Cursor CLI instead. The agent definition, the skills, and `.cursor/cli.json` are the same files a local `agent` run reads, and `CURSOR_API_KEY` is the only new secret. `gh-aw` would replace that client. An MCP server would be another process to deploy. The permission file plus the guard are the controls that stay in this repository. The CLI build we pinned cannot set a dollar budget, so the timeout and the file cap are the cost limit until a later CLI adds one.
