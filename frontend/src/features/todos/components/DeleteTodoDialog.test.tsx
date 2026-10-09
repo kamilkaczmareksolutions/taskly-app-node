@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, it, vi } from 'vitest'
 import { todoFixture } from '../../../test/todoFixture'
@@ -39,4 +39,43 @@ it('shows a deletion error and allows cancelling without deleting', async () => 
   expect(onClose).toHaveBeenCalledTimes(1)
   expect(mutateAsync).not.toHaveBeenCalled()
   expect(onDeleted).not.toHaveBeenCalled()
+})
+
+it('confirms a deletion and stays open when it fails', async () => {
+  const user = userEvent.setup()
+  const mutateAsync = vi
+    .fn()
+    .mockResolvedValueOnce(undefined)
+    .mockRejectedValueOnce(new Error('nope'))
+  vi.mocked(useDeleteTodoMutation).mockReturnValue({
+    isPending: false,
+    error: null,
+    mutateAsync,
+  } as unknown as ReturnType<typeof useDeleteTodoMutation>)
+  const onDeleted = vi.fn()
+  const { rerender } = render(
+    <DeleteTodoDialog
+      todo={todoFixture}
+      busy={false}
+      onClose={vi.fn()}
+      onDeleted={onDeleted}
+    />,
+  )
+  await user.click(screen.getByRole('button', { name: 'Delete task' }))
+  expect(mutateAsync).toHaveBeenCalledWith(todoFixture.id)
+  expect(onDeleted).toHaveBeenCalledTimes(1)
+  await user.click(screen.getByRole('button', { name: 'Delete task' }))
+  expect(onDeleted).toHaveBeenCalledTimes(1)
+  rerender(
+    <DeleteTodoDialog
+      todo={todoFixture}
+      busy
+      onClose={vi.fn()}
+      onDeleted={onDeleted}
+    />,
+  )
+  const deleting = screen.getByRole('button', { name: 'Deleting…' })
+  expect(deleting).toBeDisabled()
+  fireEvent.click(deleting)
+  expect(mutateAsync).toHaveBeenCalledTimes(2)
 })
