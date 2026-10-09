@@ -106,6 +106,7 @@ jobs:
             agent-report.json
           if-no-files-found: error
 
+  # Hard stop after --force. A later job commits only when this job succeeds.
   guard:
     needs: [detect, agent]
     if: needs.detect.outputs.should_run == 'true' && needs.agent.result == 'success'
@@ -255,7 +256,7 @@ jobs:
           path: .
         continue-on-error: true
       - name: Commit verified tests
-        if: needs.verify.result == 'success'
+        if: needs.guard.result == 'success' && needs.verify.result == 'success'
         env:
           HEAD_REF: ${{ github.head_ref }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
