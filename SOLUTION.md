@@ -2,101 +2,87 @@
 
 This solution was built AI-first: the author specified and reviewed it, and Cursor agents implemented it.
 
-## 1. Main technical decisions
+## TL;DR
 
-The agent is the Cursor CLI (`agent`), pinned by URL and SHA-256 in `scripts/agent/cursor-cli.version`. The workflow does not pipe `https://cursor.com/install` into a shell. The model slug is `claude-opus-4-8`, the explicit model named by that CLI build.
+A pull request in this repository can ask a pinned Cursor CLI to add unit tests. The model does not push and does not merge. A guard rejects any patch that is not a test file. A human merges. Forks never receive `CURSOR_API_KEY`.
 
-The workflow uses `pull_request`, not `pull_request_target`. `pull_request` runs the workflow from the pull request and does not give fork commits the repository secrets.
+## Permissions
 
-`.cursor/cli.json` is the project permissions file. This CLI build rejects `version` and `editor` in that file. Those keys belong in the global config. The agent job checks out the head commit with `persist-credentials: false` and `contents: read`. It cannot push. The publish job is the only job with `contents: write` and `pull-requests: write`. It commits only after the guard and the verify job pass.
+| Job | Token permissions | Secret |
+| --- | --- | --- |
+| detect | contents: read, actions: write | none. It sees only whether the key is non-empty |
+| agent | contents: read, actions: write. Checkout has no git credentials | `CURSOR_API_KEY` on the run step and the scan step |
+| guard | contents: read, actions: write | none |
+| verify | contents: read, actions: write | none |
+| publish | contents: write, pull-requests: write, actions: read | `GITHUB_TOKEN` only, and only on a `pull_request` |
 
-`CURSOR_API_KEY` is set on two steps in the agent job: the CLI run, and the scan that follows it. It is not a job-level variable. The detect job receives only a boolean, `secrets.CURSOR_API_KEY != ''`. Fork pull requests and Dependabot are skipped before those steps, so they never receive the key. The scan reads the patch, the report, and the raw CLI log. A match fails the job. The log line names the file and does not print the key. The raw log is deleted and is not uploaded. Those steps do not use `set -x`. GitHub still masks a registered secret if it appears in a log.
+Do not switch the repository's default workflow permission to write. The publish job requests `contents: write` for itself.
 
-Print mode does not write files unless `--force` is set. `--force` allows commands that are not denied, so the allow list is not a lock. Deny rules still block `git push`, `git commit`, `gh`, `curl`, `wget`, `npm install`, `rm`, environment files, and writes to workflows, skills, and lockfiles. They do not name every source file. The guard on a clean checkout is the hard stop. It rejects any non-test path, `.only`, `.skip`, `it.todo`, and a net deletion of assertions. Publish commits only after that job succeeds.
+## 1. Decisions
 
-Verify runs typecheck and coverage on a clean checkout plus the patch. That run, not the model's own sentence, is the published proof. A `GITHUB_TOKEN` commit does not start a new workflow run. Verify has already finished in this run, which is why the bot commit includes `[skip unit-test-agent]` as a second stop.
+The runner is the Cursor CLI, pinned by URL and SHA-256 in `scripts/agent/cursor-cli.version`. The install script checks the hash and stops on a mismatch. The download host is still a supply-chain risk at bump time: a bad URL committed by someone with write access is only caught if the hash in that same commit is the hash of the bad file. Review that file when it changes.
 
-Actions are pinned to full commit SHAs. `actions: write` is on the jobs that upload artifacts. `contents: read` alone cannot upload them.
+The model is `claude-opus-4-8` because `agent --help` on this pin lists it as the high-effort Claude slug. One explicit model avoids Auto. A reviewer changes the `model=` line to switch. An Opus run on the title-search pull request took about nine minutes. A docs-only run that should have been skipped still spent about two and a half minutes before the empty-diff gate existed.
 
-The agent follows six working rules. It writes a plan before it edits. It changes one source file at a time. It runs the test before it marks the file tested. The report quotes those commands, and the workflow runs the tests again. It skips a file only with a reason. It retries a failing new test at most three times, and it does not weaken the assertion or edit production code. It does not finish while a test it kept is failing. A red guard or verify job does not commit. The bot proposes the patch. A human merges.
+`pull_request` is used, not `pull_request_target`, so fork code never sees the key. The agent job cannot push. Publish commits only after the guard and verify succeed, and only when `github.event_name` is `pull_request`. A `workflow_dispatch` with an empty branch name skips the commit.
 
-Cost is bounded in `scripts/agent/cursor-cli.version`: model `claude-opus-4-8`, a 720 second timeout, 8 source files, and 3 fix attempts. This CLI build has no max-turn flag and no dollar cap. The report prints those numbers. `--force` still honors deny rules, so reads of `node_modules`, `.git`, coverage, and `.env` stay denied. The prompt tells the agent to read only the changed source, its test, and the skill it is using.
+`--force` is on because print mode will not write files without it. It also allows any command that is not denied, so the allow list is not a lock. Deny rules block `git push`, `git commit`, `gh`, `curl`, `wget`, `npm`, and `npx`. They do not stop `node`, `cat`, or a child process from reading `node_modules`, `.git`, or `.env`. Those Read deny lines do not hold under `--force`. The hard stop for writes is the guard: a clean checkout, then a fail if the patch leaves the test paths, adds `.only` / `.skip` / `it.todo`, drops assertions, or touches more than eight test files. Publish runs those checks again before it commits.
 
-CI runs `npm run format:check` in the frontend job. `backend/src/main.ts` stays in the coverage set. The factory branch that runs after headers are sent, and the lifespan timeout that calls `process.exit`, stay untested on purpose. Hitting them would exit the process or need a response that has already started.
+`changed-files.mjs` marks only the first eight testable source files as testable. `bounded-test.mjs` runs one test file and refuses a fourth failed run. Direct `npm test` is denied so the agent is steered through that script.
 
-## 2. How to run the workflow
+The key is not a job-level variable. Detect also requires the pull request author to have write or admin permission. A same-repository prompt injection is still the threat: there is no shell sandbox, `--force` is on, and `reject-secret` does not decode base64. Notes in the comment are cut to 400 characters and long base64 blobs are removed. That is not a full exfiltration defense.
 
-### Prerequisites
+`GITHUB_TOKEN` can push the bot commit and that push does not start CI. Pull request 2 recorded the follow-up as `action_required`. Verify had already passed in the same run. A GitHub App token would let that commit run `ci.yml`. Keep `[skip unit-test-agent]` so the app token does not pay for a second model call.
 
-Add a repository secret named `CURSOR_API_KEY`. In the repository settings, give Actions permission to read and write contents so the publish job can push to the pull request branch. Pull request comments need the `pull-requests: write` permission already set on that job.
+Coverage floors: backend 90% statements, lines, and functions, 85% branches. Validators and mappers stay at 100% per file. Frontend 85% on all four. `format:check` runs in the frontend CI job.
 
-The workflow runs on `pull_request` (`opened`, `synchronize`, `reopened`, `ready_for_review`) and on `workflow_dispatch`. Draft pull requests are skipped. A head commit whose message contains `[skip unit-test-agent]`, or whose author is `github-actions[bot]`, is skipped.
+## 2. Reviewer setup
 
-If the secret is missing, the detect job writes a notice and a job summary: "Unit-test agent skipped: CURSOR_API_KEY not configured. See SOLUTION.md#prerequisites". The pull request stays green.
+1. Fork the repository. Secrets are not copied.
+2. In the fork, open Settings, then Actions, then General, and allow Actions to run.
+3. Add a repository secret named `CURSOR_API_KEY` with your own key. The key used for the published demo is revoked after publication. Old runs stay in Actions and on the pull request.
+4. The key's account must be allowed to call `claude-opus-4-8`. If the CLI returns "model not found", change `model=` in `scripts/agent/cursor-cli.version`.
+5. Open the pull request inside the fork, with both branches in the fork. A pull request from the fork into this repository is skipped on purpose.
 
-### Plugging in your own CURSOR_API_KEY
+Without the secret, detect writes: "Unit-test agent skipped: CURSOR_API_KEY not configured. See SOLUTION.md#prerequisites". The pull request stays green.
 
-To run the workflow on a fork or a copy, create your own Cursor API key and save it as the Actions secret `CURSOR_API_KEY` in that repository. A fork does not receive this repository's secrets. The key used to publish this repository is revoked after publication. Runs that already finished stay visible in the Actions tab and on the pull request.
-
-## 3. Where the agent and skills are defined
+## 3. Layout
 
 ```text
 .cursor/agents/unit-test-agent.md
 .cursor/cli.json
-.cursor/skills/analyze-pr-diff/SKILL.md
-.cursor/skills/backend-unit-tests/SKILL.md
-.cursor/skills/frontend-unit-tests/SKILL.md
-.cursor/skills/run-tests-and-coverage/SKILL.md
-.cursor/skills/fix-failing-test/SKILL.md
-.cursor/skills/report-to-pr/SKILL.md
+.cursor/skills/*/SKILL.md
 .github/workflows/ci.yml
 .github/workflows/unit-test-agent.yml
 scripts/agent/
 ```
 
-The CLI is told to follow `.cursor/agents/unit-test-agent.md` and the skills. `changed-files.json` is passed as data. The agent writes `agent-report.json` and test files. The publish job turns that file, plus the workflow's own test and coverage output, into one sticky comment marked `<!-- unit-test-agent-report -->`.
-
-```mermaid
-flowchart LR
-  detect[detect]
-  agent[agent]
-  guard[guard]
-  verify[verify]
-  publish[publish]
-  detect --> agent --> guard --> verify --> publish
-```
-
-`detect` has no API key. `agent` installs the pinned CLI and runs it. `guard` applies the patch and checks the diff, then runs the new tests twice. `verify` repeats typecheck and coverage on a clean tree. `publish` commits and comments only for a same-repository pull request.
+`detect` then `agent` then `guard` then `verify` then `publish`. The comment marker is `<!-- unit-test-agent-report -->`.
 
 ## 4. Example run
 
-Run: [Unit-test agent on the title-search pull request](https://github.com/kamilkaczmareksolutions/taskly-app-node/actions/runs/37925977823). Pull request: [feat: search todos by title](https://github.com/kamilkaczmareksolutions/taskly-app-node/pull/2). `demo/search-todos` is the same feature with no pull request and no tests.
+[Run 37925977823](https://github.com/kamilkaczmareksolutions/taskly-app-node/actions/runs/37925977823) on [pull request 2](https://github.com/kamilkaczmareksolutions/taskly-app-node/pull/2). `demo/search-todos` has the feature and no pull request.
 
-The agent planned six files. It tested the repository, the router, the tasks page, the todos API, and `useTodosQuery`. It skipped `types.ts` because the change is a type. Skills: `analyze-pr-diff`, `backend-unit-tests`, `frontend-unit-tests`, `run-tests-and-coverage`, `report-to-pr`.
+The agent tested the repository, the router, the tasks page, the todos API, and `useTodosQuery`. It skipped `types.ts`. Skills: `analyze-pr-diff`, `backend-unit-tests`, `frontend-unit-tests`, `run-tests-and-coverage`, `report-to-pr`. Changed tests passed twice. Verify passed.
 
-The agent recorded green commands, including 13 passing backend tests for the repository and the router. The workflow then ran the changed tests twice (not flaky) and verify passed. Coverage against that run's base:
+Backend statements 98.44% to 98.5% (+0.06), branches 97.91% to 98.07% (+0.16), functions 96.87%, lines 100%. Frontend statements 99.4% to 99.42% (+0.02), branches 97.81% to 97.93% (+0.12), functions 100%, lines 100%.
 
-- Backend statements 98.44% to 98.5% (+0.06). Branches 97.91% to 98.07% (+0.16). Functions 96.87% to 96.87%. Lines 100% to 100%.
-- Frontend statements 99.4% to 99.42% (+0.02). Branches 97.81% to 97.93% (+0.12). Functions 100% to 100%. Lines 100% to 100%.
+## 5. Where the baseline tests came from
 
-The bot pushed `test: cover the pull request behavior [skip unit-test-agent]`. That commit does not start a new workflow run. GitHub records the follow-up as `action_required`. Verify had already passed in the same run. A human merges.
+Commits `6d79062` and `a655da7` were written in the same Cursor session that added the skills. They were not produced by `unit-test-agent.yml`. The session followed the Vitest and Testing Library style those skills describe. The first time that workflow wrote tests is the bot commit on pull request 2.
 
-## 5. Assumptions
+## 6. Assumptions
 
-Node 22 is available on the runner. Unit tests do not need Postgres. The API key can call the pinned CLI with `claude-opus-4-8`. The pull request branch is in this repository, so `GITHUB_TOKEN` can push to it. Review comments and the diff are untrusted.
+Node 22 is on the runner. Unit tests do not need Postgres. The key can call `claude-opus-4-8`. The author of a same-repository pull request has write or admin. Review text is untrusted.
 
-## 6. Limitations
+## 7. Limitations
 
-The model can write a different test on each run. A hostile diff can still confuse it. Fork pull requests are skipped because they cannot see the secret. Dependabot is skipped for the same reason. Each pull request spends a model call.
+The model can write a different test each run. A same-repository diff can hide instructions. With no sandbox and with `--force`, that can try to read the key. `reject-secret` matches the raw value, not base64. Notes and reasons lose long base64 blobs, and notes stop at 400 characters. Only a write or admin author starts the agent. Production needs an egress allowlist (`step-security/harden-runner`), a spending-capped key, and the shell sandbox.
 
-`--force` is required for print mode to write files. It also allows any command that is not on the deny list, so the allow list is not a lock. Deny rules still block `git push`, `git commit`, `gh`, `curl`, `wget`, `npm install`, `rm`, environment files, workflows, skills, and lockfiles. A source file such as `frontend/src/App.tsx` is not on that deny list, so `--force` can write it. The agent checkout has no stored git credentials. The hard stop is the guard job. It applies the patch on a clean checkout and fails the workflow if any path is outside `backend/tests/`, a frontend `*.test.ts` or `*.test.tsx` file, or `frontend/src/test/`. It also rejects `.only`, `.skip`, `it.todo`, and a net loss of assertions. Publish commits only when that job and verify both succeed. A failed guard leaves the pull request branch unchanged.
+The eight-file cap is in `changed-files.mjs` and again on the patch. The three-failure cap is in `bounded-test.mjs`. A command that is not denied can ignore it. `node` and `cat` can read paths the Read deny list names. `GITHUB_TOKEN` does not retrigger workflows. The factory branch after headers are sent, and the lifespan `process.exit` timer, stay untested on purpose.
 
-`GITHUB_TOKEN` can push the bot commit, and that push does not start CI or this workflow again. On the title-search pull request GitHub showed the follow-up as `action_required`. The tests were already green in verify, in the same run. A later bad bot commit would not be rechecked until a person pushes. The production fix is a GitHub App token. App tokens are allowed to trigger workflows, so the bot commit can run CI again. Section 7 names that token. The `[skip unit-test-agent]` trailer stays, so the app token does not start a second model call.
+## 8. Production extensions
 
-The shell sandbox is off so Vitest can run. The factory branch that runs after headers are sent, and the lifespan timeout that calls `process.exit`, stay untested on purpose.
+Use a GitHub App token so the bot commit runs CI. Keep the skip trailer so it does not run the model again. Add mutation testing, a label trigger, a rate limit, and an environment protection rule on the secret.
 
-## 7. Production extensions
-
-Use a GitHub App installation token for the publish job when the bot commit must start CI. `GITHUB_TOKEN` is blocked from triggering workflows, which is why the follow-up run on pull request 2 ended as `action_required`. An app token is a normal actor, so the new commit runs `.github/workflows/ci.yml`. Keep `[skip unit-test-agent]` in the bot message so that token does not pay for a second model run. The same app token is what you use when the bot must act across repositories. Add mutation testing, a label or a comment command to start a run, dependency caching beyond npm, a recorded set of model runs, a rate limit, and an environment protection rule on the secret.
-
-GitHub Agentic Workflows (`gh-aw`) compile a markdown workflow into Actions. The agent runs in that action, and safe outputs are the only way it can comment or open a pull request. An MCP variant would expose "read this file" and "run this test" as tools on a server, and the server would refuse every other call. This repo uses the Cursor CLI instead. The agent definition, the skills, and `.cursor/cli.json` are the same files a local `agent` run reads, and `CURSOR_API_KEY` is the only new secret. `gh-aw` would replace that client. An MCP server would be another process to deploy. The permission file plus the guard are the controls that stay in this repository. The CLI build we pinned cannot set a dollar budget, so the timeout and the file cap are the cost limit until a later CLI adds one.
+GitHub Agentic Workflows (`gh-aw`) compile markdown into Actions and let the agent speak only through safe outputs. An MCP server would expose "read file" and "run test" and refuse the rest. This repo uses the Cursor CLI because `.cursor/agents`, the skills, and `cli.json` are the files a local `agent` run already reads.
