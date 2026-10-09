@@ -17,7 +17,7 @@ Render the component or hook under test with React Testing Library. Assert the t
 4. For data hooks, render with a fresh `QueryClient` whose queries and mutations have `retry: false`. Use `frontend/src/test/queryWrapper.tsx` when it exists.
 5. Mock HTTP at `fetch` with `vi.spyOn(globalThis, 'fetch')` in `http` tests. Existing `todosApi` tests mock `request`. Keep that file's style when you extend it. Do not mock the function you are trying to observe.
 6. Design-system components are mocked with `vi.mock('../../../design-system', () => import('../../../design-system/mocks'))` in component tests. Count the `../` from the test file.
-7. Run `npm test --prefix frontend -- src/path/to/file.test.tsx`. Record the command in `evidence`.
+7. Run `node scripts/agent/bounded-test.mjs test frontend src/path/to/file.test.tsx`. Record the command in `evidence`.
 
 ## Example
 

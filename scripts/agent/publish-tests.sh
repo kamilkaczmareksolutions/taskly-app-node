@@ -3,8 +3,12 @@
 set -euo pipefail
 set +x
 
-if [ -z "${HEAD_REF}" ] || [ "${HEAD_REF}" = "main" ] || [ "${HEAD_REF}" = "master" ]; then
-  echo "Refusing to push to ${HEAD_REF:-<empty>}." >&2
+if [ -z "${HEAD_REF}" ]; then
+  echo "No pull request branch. Skipping the commit."
+  exit 0
+fi
+if [ "${HEAD_REF}" = "main" ] || [ "${HEAD_REF}" = "master" ]; then
+  echo "Refusing to push to ${HEAD_REF}." >&2
   exit 1
 fi
 
@@ -16,6 +20,9 @@ fi
 git fetch origin "${HEAD_REF}"
 git checkout --detach "${HEAD_SHA}"
 git apply --index agent.patch
+node scripts/agent/guard-test-only-changes.mjs
+node scripts/agent/check-no-focus-skip.mjs agent.patch
+node scripts/agent/check-budget.mjs
 if git diff --cached --quiet; then
   echo "Patch applied with no staged changes."
   exit 0

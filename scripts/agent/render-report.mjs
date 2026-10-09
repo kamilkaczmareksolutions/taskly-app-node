@@ -28,6 +28,15 @@ function coverageLines(coverage) {
   return lines;
 }
 
+const BASE64_BLOB = /[A-Za-z0-9+/]{40,}={0,2}/g;
+
+export function sanitizeText(text, max = 400) {
+  if (typeof text !== 'string') return '';
+  const cleaned = text.replace(BASE64_BLOB, '[removed]').replace(/\s+/g, ' ').trim();
+  if (cleaned.length <= max) return cleaned;
+  return `${cleaned.slice(0, max)}…`;
+}
+
 export function loadBudget(versionText) {
   const pin = parseVersionFile(versionText);
   return {
@@ -50,12 +59,12 @@ export function renderReport({ report, coverage, tests, verify, failure, budget 
   if (failure) lines.push(failure, '');
   lines.push('### Plan', '');
   if (!plan.length) lines.push('No plan was recorded.', '');
-  for (const item of plan) lines.push(`- \`${item.path}\`: ${item.action}. ${item.reason ?? ''}`);
+  for (const item of plan) lines.push(`- \`${item.path}\`: ${item.action}. ${sanitizeText(item.reason ?? '', 240)}`);
   lines.push('', '### Decisions', '');
   if (!decisions.length) lines.push('No per-file decisions were recorded.', '');
   for (const decision of decisions) {
     const files = decision.testFiles?.length ? ` Tests: ${decision.testFiles.join(', ')}.` : '';
-    lines.push(`- \`${decision.path}\`: ${decision.decision}. ${decision.reason ?? ''}${files}`);
+    lines.push(`- \`${decision.path}\`: ${decision.decision}. ${sanitizeText(decision.reason ?? '', 240)}${files}`);
   }
   lines.push('', '### Skills', '');
   lines.push(skills.length ? skills.map((skill) => `\`${skill}\``).join(', ') : 'None recorded.');
@@ -64,7 +73,7 @@ export function renderReport({ report, coverage, tests, verify, failure, budget 
   lines.push('', '### Evidence from the agent', '');
   if (!evidence.length) lines.push('The agent did not record a test command. The workflow runs below are the executed proof.', '');
   for (const item of evidence) {
-    lines.push(`- \`${item.command}\` exited ${item.exitCode}. ${item.summary ?? ''}`);
+    lines.push(`- \`${sanitizeText(item.command ?? '', 180)}\` exited ${item.exitCode}. ${sanitizeText(item.summary ?? '', 180)}`);
   }
   lines.push('', '### Test runs from this workflow', '');
   if (tests) {
@@ -77,9 +86,10 @@ export function renderReport({ report, coverage, tests, verify, failure, budget 
   lines.push(renderedCoverage.length ? renderedCoverage.join('\n') : 'Coverage delta was not recorded.');
   if (bugs.length) {
     lines.push('', '### Suspected bugs', '');
-    for (const bug of bugs) lines.push(`- ${bug}`);
+    for (const bug of bugs) lines.push(`- ${sanitizeText(String(bug), 240)}`);
   }
-  if (report?.notes) lines.push('', '### Notes', '', report.notes);
+  const notes = sanitizeText(report?.notes);
+  if (notes) lines.push('', '### Notes', '', notes);
   lines.push('', '### Cost', '');
   if (!budget) {
     lines.push('Budget was not recorded.', '');
@@ -87,8 +97,8 @@ export function renderReport({ report, coverage, tests, verify, failure, budget 
     lines.push(`- Model: \`${budget.model}\`. CLI pin: \`${budget.version}\`.`);
     lines.push(`- Timeout: ${budget.timeoutSeconds} seconds. This CLI build has no max-turn flag, so the process is killed at the timeout.`);
     lines.push(`- Turn budget: ${budget.maxSourceFiles} source files, ${budget.maxFixAttempts} retries on a failing new test.`);
-    lines.push('- Reads stay on the changed source, its test, and `.cursor/skills`. `node_modules`, `.git`, coverage output, and `.env` files are denied.');
-    lines.push('- A red test run does not commit. This comment proposes the patch. A human merges.');
+    lines.push('- Read denies do not stop `node`, `cat`, or `npm` while `--force` is on. The file cap and the retry script are what the workflow enforces.');
+    lines.push('- A red test run does not commit. The bot commits to the pull request branch and never merges.');
   }
   lines.push('', 'Artifacts: `unit-test-agent-output` and `unit-test-verify` on this workflow run.');
   return `${lines.join('\n')}\n`;

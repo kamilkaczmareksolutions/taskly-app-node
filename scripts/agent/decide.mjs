@@ -22,7 +22,23 @@ export function decide(input) {
   if (!input.hasKey) {
     return { shouldRun: false, sameRepo, reason: KEY_NOTICE, notice: true };
   }
+  const permission = input.authorPermission;
+  if (permission && permission !== 'admin' && permission !== 'write') {
+    return {
+      shouldRun: false,
+      sameRepo,
+      reason: 'The pull request author does not have write access, so the agent does not run.',
+      notice: false,
+    };
+  }
   return { shouldRun: true, sameRepo, reason: '', notice: false };
+}
+
+export function gateShouldRun(decision, report) {
+  if (!decision.shouldRun) return decision;
+  const testable = Array.isArray(report?.files) && report.files.some((file) => file.testable === true);
+  if (testable) return decision;
+  return { ...decision, shouldRun: false, reason: 'No testable source file changed.', notice: false };
 }
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
@@ -37,6 +53,7 @@ if (isMain) {
     commitMessage: process.env.COMMIT_MESSAGE,
     commitAuthor: process.env.COMMIT_AUTHOR,
     hasKey: process.env.HAS_CURSOR_API_KEY === 'true',
+    authorPermission: process.env.AUTHOR_PERMISSION,
   });
   process.stdout.write(`${JSON.stringify(decision)}\n`);
 }

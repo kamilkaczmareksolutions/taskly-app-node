@@ -12,6 +12,7 @@ backend/src/generated/prisma/
 coverage/
 
 # Unit-test agent output
+agent-attempts.json
 agent-report.json
 agent-report.md
 agent.patch
