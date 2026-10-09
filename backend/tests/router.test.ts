@@ -18,6 +18,27 @@ it('lists tasks from the repository', async () => {
   expect(response.body).toEqual([todo]);
   expect(repository.list).toHaveBeenCalledOnce();
 });
+it('accepts a search query of 120 characters', async () => {
+  const { app, repository } = setup();
+  const q = 'x'.repeat(120);
+  const response = await request(app).get('/api/todos').query({ q });
+  expect(response.status).toBe(200);
+  expect(response.body).toEqual([todo]);
+  expect(repository.list).toHaveBeenCalledWith({ q });
+});
+it('accepts a whitespace-only search and passes an empty query', async () => {
+  const { app, repository } = setup();
+  const response = await request(app).get('/api/todos').query({ q: '   ' });
+  expect(response.status).toBe(200);
+  expect(response.body).toEqual([todo]);
+  expect(repository.list).toHaveBeenCalledWith({ q: '' });
+});
+it('rejects a search query of 121 characters without listing tasks', async () => {
+  const { app, repository } = setup();
+  const response = await request(app).get('/api/todos').query({ q: 'x'.repeat(121) });
+  expect(response.status).toBe(422);
+  expect(repository.list).not.toHaveBeenCalled();
+});
 it('creates tasks with trimmed input and defaults', async () => {
   const { app, repository } = setup();
   const response = await request(app).post('/api/todos').send({ title: '  Plan the sprint  ', priority: 'high' });

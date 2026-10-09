@@ -13,6 +13,22 @@ it('passes the abort signal when fetching tasks', async () => {
   expect(request).toHaveBeenCalledWith('/todos', { signal })
 })
 
+it('encodes a trimmed search term into the query string', async () => {
+  const signal = new AbortController().signal
+  vi.mocked(request).mockResolvedValue([todoFixture])
+  await expect(todosApi.list(signal, '  Plan a demo  ')).resolves.toEqual([
+    todoFixture,
+  ])
+  expect(request).toHaveBeenCalledWith('/todos?q=Plan+a+demo', { signal })
+})
+
+it('omits the query string when the search term is blank', async () => {
+  const signal = new AbortController().signal
+  vi.mocked(request).mockResolvedValue([todoFixture])
+  await expect(todosApi.list(signal, '   ')).resolves.toEqual([todoFixture])
+  expect(request).toHaveBeenCalledWith('/todos', { signal })
+})
+
 it('sends only writable task fields on creation', async () => {
   vi.mocked(request).mockResolvedValue(todoFixture)
   await expect(todosApi.create(todoFixture)).resolves.toEqual(todoFixture)

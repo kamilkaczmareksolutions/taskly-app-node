@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Alert, Button } from '../../design-system'
+import { Alert, Button, Input } from '../../design-system'
 import { SuccessNotice } from '../../components/SuccessNotice'
 import { useNotice } from '../../hooks/useNotice'
 import { DeleteTodoDialog } from './components/DeleteTodoDialog'
@@ -14,7 +14,8 @@ import { useUpdateTodoMutation } from './hooks/useUpdateTodoMutation'
 import type { Todo } from './types'
 
 export function TodosPage() {
-  const todosQuery = useTodosQuery()
+  const [titleQuery, setTitleQuery] = useState('')
+  const todosQuery = useTodosQuery(titleQuery)
   const todos = todosQuery.data ?? []
   const filters = useTodoFilters(todos)
   const toggleTodo = useUpdateTodoMutation()
@@ -48,6 +49,12 @@ export function TodosPage() {
   return (
     <>
       <main id="main" className="page-layout">
+        <Input
+          label="Search by title"
+          placeholder="Search by title"
+          value={titleQuery}
+          onChange={(event) => setTitleQuery(event.target.value)}
+        />
         <TodosHeader
           disabled={todosQuery.isPending || busy}
           onCreate={() => setEditor('new')}
