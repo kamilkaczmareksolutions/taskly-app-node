@@ -3,8 +3,9 @@
 set -euo pipefail
 set +x
 
-commit_message="$(git log -1 --format=%s)"
-commit_author="$(git log -1 --format=%an)"
+# pull_request checkouts are the merge commit. The skip trailer lives on the head commit.
+commit_message="$(git log -1 --format=%s "${HEAD_SHA}")"
+commit_author="$(git log -1 --format=%an "${HEAD_SHA}")"
 
 decision="$(
   EVENT_NAME="${EVENT_NAME}" \
