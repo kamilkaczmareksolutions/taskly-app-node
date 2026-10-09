@@ -217,6 +217,16 @@ it('keeps the page usable when a toggle fails or the list is busy', async () => 
   expect(busy.mutateAsync).not.toHaveBeenCalled()
 })
 
+it('drives the task query from the search-by-title input', async () => {
+  const user = userEvent.setup()
+  pageMocks()
+  render(<TodosPage />)
+  const search = screen.getByLabelText('Search by title')
+  await user.type(search, 'Plan')
+  expect(search).toHaveValue('Plan')
+  await waitFor(() => expect(useTodosQuery).toHaveBeenLastCalledWith('Plan'))
+})
+
 it('opens the editor and the delete dialog', async () => {
   const user = userEvent.setup()
   const { notify } = pageMocks()

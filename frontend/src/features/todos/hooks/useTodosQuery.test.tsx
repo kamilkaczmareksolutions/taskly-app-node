@@ -22,3 +22,25 @@ it('loads tasks with the request abort signal', async () => {
   await waitFor(() => expect(result.current.data).toEqual([todoFixture]))
   expect(todosApi.list).toHaveBeenCalledWith(expect.any(AbortSignal))
 })
+
+it('forwards a trimmed search term to the list request', async () => {
+  vi.mocked(todosApi.list).mockResolvedValue([todoFixture])
+  const client = createTestQueryClient()
+  const { result } = renderHook(() => useTodosQuery('  Plan  '), {
+    wrapper: createQueryWrapper(client),
+  })
+  await waitFor(() => expect(result.current.data).toEqual([todoFixture]))
+  expect(todosApi.list).toHaveBeenCalledWith(expect.any(AbortSignal), 'Plan')
+})
+
+it('fetches without a term when the search is whitespace only', async () => {
+  vi.mocked(todosApi.list).mockResolvedValue([todoFixture])
+  const client = createTestQueryClient()
+  const { result } = renderHook(() => useTodosQuery('   '), {
+    wrapper: createQueryWrapper(client),
+  })
+  await waitFor(() => expect(result.current.data).toEqual([todoFixture]))
+  expect(vi.mocked(todosApi.list).mock.lastCall).toEqual([
+    expect.any(AbortSignal),
+  ])
+})
