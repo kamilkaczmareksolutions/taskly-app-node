@@ -26,7 +26,9 @@ The model is `claude-opus-4-8` because `agent --help` on this pin lists it as th
 
 `pull_request` is used, not `pull_request_target`, so fork code never sees the key. The agent job cannot push. Publish commits only after the guard and verify succeed, and only when `github.event_name` is `pull_request`. A `workflow_dispatch` with an empty branch name skips the commit.
 
-`--force` is on because print mode will not write files without it. It also allows any command that is not denied, so the allow list is not a lock. Deny rules block `git push`, `git commit`, `gh`, `curl`, `wget`, `npm`, and `npx`. They do not stop `node`, `cat`, or a child process from reading `node_modules`, `.git`, or `.env`. Those Read deny lines do not hold under `--force`. The hard stop for writes is the guard: a clean checkout, then a fail if the patch leaves the test paths, adds `.only` / `.skip` / `it.todo`, drops assertions, or touches more than eight test files. Publish runs those checks again before it commits.
+`--force` is on because print mode will not write files without it. It also allows any command that is not denied, so the allow list is not a lock. Deny rules block `git push`, `git commit`, `gh`, `curl`, `wget`, `npm`, and `npx`. They do not stop `node` or `cat` from reading `node_modules`, `.git`, or `.env`. Those Read deny lines do not hold under `--force`. The hard stop for writes is the guard: a clean checkout, then a fail if the patch leaves `*.test.ts`, `*.test.tsx`, or `frontend/src/test/queryWrapper.tsx`, adds `.only`, `.skip`, `it.todo`, a weak matcher such as `toBeDefined`, drops assertions, or touches more than eight test files. Publish runs those checks again before it commits.
+
+The API key is not left in the environment of the CLI process. `run-agent.sh` passes it only as `--api-key` under `env -u CURSOR_API_KEY`. `bounded-test.mjs` deletes the variable again before `npm`. Before the CLI starts, the job checks out `scripts/agent`, `.cursor`, and `.github/workflows` from the base SHA. The app tree stays from the pull request head. Guard and verify, which run the tests that gate the commit, never receive the key. A person with write access can still change the workflow file that GitHub runs, and this repo has not proved that the CLI never copies `--api-key` back into a tool shell. That is the remaining hole.
 
 `changed-files.mjs` marks only the first eight testable source files as testable. `bounded-test.mjs` runs one test file and refuses a fourth failed run. Direct `npm test` is denied so the agent is steered through that script.
 
@@ -34,7 +36,7 @@ The key is not a job-level variable. Detect also requires the pull request autho
 
 `GITHUB_TOKEN` can push the bot commit and that push does not start CI. Pull request 2 recorded the follow-up as `action_required`. Verify had already passed in the same run. A GitHub App token would let that commit run `ci.yml`. Keep `[skip unit-test-agent]` so the app token does not pay for a second model call.
 
-Coverage floors: backend 90% statements, lines, and functions, 85% branches. Validators and mappers stay at 100% per file. Frontend 85% on all four. `format:check` runs in the frontend CI job.
+Coverage floors: backend 90% statements, lines, and functions, 85% branches. Validators and mappers stay at 100% per file. Frontend 85% is only the files Vite counts. The count excludes `src/design-system/**`, `src/main.tsx`, barrels, type files, `queryKeys.ts`, `queryClient.ts`, and test files. `App.test.tsx` stubs the tasks page. `TodosPage.test.tsx` renders that page, so a broken page still fails its own tests. `format:check` runs in the frontend CI job.
 
 ## 2. Reviewer setup
 
