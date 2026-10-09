@@ -22,7 +22,7 @@ Do not switch the repository's default workflow permission to write. The publish
 
 The runner is the Cursor CLI, pinned by URL and SHA-256 in `scripts/agent/cursor-cli.version`. The install script checks the hash and stops on a mismatch. The download host is still a supply-chain risk at bump time: a bad URL committed by someone with write access is only caught if the hash in that same commit is the hash of the bad file. Review that file when it changes.
 
-The model is `claude-opus-4-8` because `agent --help` on this pin lists it as the high-effort Claude slug. One explicit model avoids Auto. A reviewer changes the `model=` line to switch. An Opus run on the title-search pull request took about nine minutes. A docs-only run that should have been skipped still spent about two and a half minutes before the empty-diff gate existed.
+The model is `claude-opus-4-8` because `agent --help` on this pin lists it as the high-effort Claude slug. One explicit model avoids Auto. A reviewer changes the `model=` line to switch. The title-search run [37932834850](https://github.com/kamilkaczmareksolutions/taskly-app-node/actions/runs/37932834850) took 9 minutes 4 seconds. A docs-only run that should have been skipped still spent about two and a half minutes before the empty-diff gate existed.
 
 `pull_request` is used, not `pull_request_target`, so fork code never sees the key. The agent job cannot push. Publish commits only after the guard and verify succeed, and only when `github.event_name` is `pull_request`. A `workflow_dispatch` with an empty branch name skips the commit.
 
@@ -63,11 +63,11 @@ scripts/agent/
 
 ## 4. Example run
 
-[Run 37925977823](https://github.com/kamilkaczmareksolutions/taskly-app-node/actions/runs/37925977823) on [pull request 2](https://github.com/kamilkaczmareksolutions/taskly-app-node/pull/2). `demo/search-todos` has the feature and no pull request.
+[Run 37932834850](https://github.com/kamilkaczmareksolutions/taskly-app-node/actions/runs/37932834850) on [pull request 2](https://github.com/kamilkaczmareksolutions/taskly-app-node/pull/2), head `7a8d303`. It finished in 9 minutes 4 seconds. `demo/search-todos` has the feature and no pull request.
 
-The agent tested the repository, the router, the tasks page, the todos API, and `useTodosQuery`. It skipped `types.ts`. Skills: `analyze-pr-diff`, `backend-unit-tests`, `frontend-unit-tests`, `run-tests-and-coverage`, `report-to-pr`. Changed tests passed twice. Verify passed.
+The head already covered a 120-character query, a whitespace-only query, and a 121-character rejection, and the repository filter. The agent skipped those files and `types.ts`. It added tests for `todosApi.list`, `useTodosQuery`, and the search field on `TodosPage`. Skills: `analyze-pr-diff`, `frontend-unit-tests`, `fix-failing-test`, `run-tests-and-coverage`, `report-to-pr`. One hook assertion failed, the retry passed, and the red run was not committed. Changed tests passed twice. Verify passed. The bot commit is `366ad2c` with `[skip unit-test-agent]`. That push is `action_required` and has no jobs, because `GITHUB_TOKEN` does not start workflows.
 
-Backend statements 98.44% to 98.5% (+0.06), branches 97.91% to 98.07% (+0.16), functions 96.87%, lines 100%. Frontend statements 99.4% to 99.42% (+0.02), branches 97.81% to 97.93% (+0.12), functions 100%, lines 100%.
+Backend statements 98.44% to 98.5% (+0.06), branches 97.91% to 98.07% (+0.16), functions 96.87%, lines 100%. That backend movement is the boundary tests already on the head. Frontend statements 99.4% to 99.42% (+0.02), branches 97.81% to 97.93% (+0.12), functions 100%, lines 100%. That frontend movement is the agent patch.
 
 ## 5. Where the baseline tests came from
 
