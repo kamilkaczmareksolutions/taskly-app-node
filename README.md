@@ -1,5 +1,9 @@
 # Taskly App Node
 
+## Quality automation
+
+Pull requests run typecheck and coverage in [`.github/workflows/ci.yml`](.github/workflows/ci.yml). A separate workflow can add unit tests for the diff. See [SOLUTION.md](SOLUTION.md).
+
 ## Setup
 
 ```sh
