@@ -7,6 +7,18 @@ set +x
 commit_message="$(git log -1 --format=%s "${HEAD_SHA}")"
 commit_author="$(git log -1 --format=%an "${HEAD_SHA}")"
 
+author_user="${PR_USER}"
+if [ -z "$author_user" ]; then
+  author_user="${ACTOR}"
+fi
+author_permission="none"
+if [ "$author_user" = "dependabot[bot]" ]; then
+  author_permission="none"
+elif [ -n "$author_user" ]; then
+  encoded_user="$(node -e 'process.stdout.write(encodeURIComponent(process.argv[1]))' "$author_user")"
+  author_permission="$(gh api "repos/${BASE_REPO}/collaborators/${encoded_user}/permission" --jq .permission 2>/dev/null || echo none)"
+fi
+
 decision="$(
   EVENT_NAME="${EVENT_NAME}" \
   HEAD_REPO="${HEAD_REPO}" \
@@ -17,6 +29,7 @@ decision="$(
   COMMIT_MESSAGE="${commit_message}" \
   COMMIT_AUTHOR="${commit_author}" \
   HAS_CURSOR_API_KEY="${HAS_CURSOR_API_KEY}" \
+  AUTHOR_PERMISSION="${author_permission}" \
   node scripts/agent/decide.mjs
 )"
 
@@ -31,6 +44,15 @@ fi
 
 git fetch origin "${BASE_REF}" --depth=1
 node scripts/agent/changed-files.mjs --base "origin/${BASE_REF}" --head HEAD > changed-files.json
+
+if [ "$should_run" = "true" ]; then
+  gated="$(node --input-type=module -e "import { readFileSync } from 'node:fs'; import { gateShouldRun } from './scripts/agent/decide.mjs'; const report = JSON.parse(readFileSync('changed-files.json', 'utf8')); process.stdout.write(JSON.stringify(gateShouldRun({ shouldRun: true, sameRepo: true, reason: '', notice: false }, report)));")"
+  should_run="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).shouldRun ? "true" : "false")' "$gated")"
+  gated_reason="$(node -e 'process.stdout.write(JSON.parse(process.argv[1]).reason)' "$gated")"
+  if [ -n "$gated_reason" ]; then
+    reason="$gated_reason"
+  fi
+fi
 
 delimiter="UNIT_TEST_AGENT_$(od -An -N8 -tx1 /dev/urandom | tr -d ' \n')"
 {

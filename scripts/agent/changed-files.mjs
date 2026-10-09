@@ -1,5 +1,7 @@
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+import { loadBudget } from './render-report.mjs';
 
 const BACKEND_TESTS = {
   router: 'backend/tests/router.test.ts',
@@ -76,6 +78,24 @@ export function reportFromNameStatus(text, base, head) {
   return { base, head, files };
 }
 
+export function applyFileBudget(report, maxSourceFiles) {
+  const cap = Number(maxSourceFiles);
+  if (!Number.isFinite(cap) || cap < 1) return report;
+  let kept = 0;
+  const files = report.files.map((file) => {
+    if (!file.testable) return file;
+    kept += 1;
+    if (kept <= cap) return file;
+    return {
+      ...file,
+      testable: false,
+      testPaths: [],
+      reason: `Run budget: only ${cap} source files per workflow.`,
+    };
+  });
+  return { ...report, files };
+}
+
 function flag(name) {
   const index = process.argv.indexOf(name);
   return index >= 0 ? process.argv[index + 1] : undefined;
@@ -86,5 +106,7 @@ if (isMain) {
   const base = flag('--base') ?? 'origin/main';
   const head = flag('--head') ?? 'HEAD';
   const text = execFileSync('git', ['diff', '--name-status', '--find-renames', `${base}...${head}`], { encoding: 'utf8' });
-  process.stdout.write(`${JSON.stringify(reportFromNameStatus(text, base, head), null, 2)}\n`);
+  const budget = loadBudget(readFileSync(new URL('./cursor-cli.version', import.meta.url), 'utf8'));
+  const report = applyFileBudget(reportFromNameStatus(text, base, head), budget.maxSourceFiles);
+  process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
 }

@@ -3,15 +3,17 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { classifyPath, reportFromNameStatus } from './changed-files.mjs';
+import { applyFileBudget, classifyPath, reportFromNameStatus } from './changed-files.mjs';
+import { decideAttempt } from './bounded-test.mjs';
+import { excessFailures, excessTestFiles } from './check-budget.mjs';
 import { auditDiff } from './check-no-focus-skip.mjs';
 import { coverageDelta } from './coverage-summary.mjs';
-import { decide } from './decide.mjs';
+import { decide, gateShouldRun } from './decide.mjs';
 import { disallowedPaths } from './guard-test-only-changes.mjs';
 import { assertChecksum, parseVersionFile } from './install-cursor-cli.mjs';
 import { COMMENT_MARKER, commentBody, findStickyComment } from './publish-comment.mjs';
 import { filesContainingSecret } from './reject-secret.mjs';
-import { loadBudget, renderReport } from './render-report.mjs';
+import { loadBudget, renderReport, sanitizeText } from './render-report.mjs';
 import { groupTestFiles } from './run-changed-tests.mjs';
 
 const ready = {
@@ -37,6 +39,11 @@ test('decide skips forks, Dependabot, drafts, bot commits, and a missing key', (
   assert.equal(missing.notice, true);
   assert.match(missing.reason, /CURSOR_API_KEY not configured/);
   assert.equal(decide(ready).shouldRun, true);
+  assert.equal(decide({ ...ready, authorPermission: 'read' }).shouldRun, false);
+  assert.equal(decide({ ...ready, authorPermission: 'admin' }).shouldRun, true);
+  const docsOnly = reportFromNameStatus('M\tREADME.md\n', 'origin/main', 'HEAD');
+  assert.equal(gateShouldRun({ shouldRun: true, sameRepo: true, reason: '', notice: false }, docsOnly).shouldRun, false);
+  assert.equal(gateShouldRun({ shouldRun: true, sameRepo: true, reason: '', notice: false }, reportFromNameStatus('M\tbackend/src/core/config.ts\n', 'a', 'b')).shouldRun, true);
 });
 
 test('classify maps source to the repo test paths and skips docs', () => {
@@ -52,6 +59,15 @@ test('classify maps source to the repo test paths and skips docs', () => {
   const renamed = reportFromNameStatus('R100\told.ts\tbackend/src/core/config.ts\n', 'origin/main', 'HEAD');
   assert.equal(renamed.files[0].path, 'backend/src/core/config.ts');
   assert.equal(renamed.files[0].testPaths[0], 'backend/tests/config.test.ts');
+  const many = reportFromNameStatus('M\tbackend/src/core/config.ts\nM\tbackend/src/factory.ts\nM\tbackend/src/main.ts\n', 'a', 'b');
+  const capped = applyFileBudget(many, 2);
+  assert.equal(capped.files.filter((file) => file.testable).length, 2);
+  assert.match(capped.files[2].reason, /only 2 source files/);
+  assert.equal(decideAttempt(2, 3).run, true);
+  assert.equal(decideAttempt(3, 3).run, false);
+  assert.equal(excessTestFiles(['backend/tests/a.test.ts', 'backend/tests/b.test.ts'], 1).length, 2);
+  assert.deepEqual(excessFailures([{ command: 'x', exitCode: 1 }, { command: 'x', exitCode: 1 }, { command: 'x', exitCode: 1 }], 2), ['x']);
+  assert.equal(sanitizeText(`note ${'A'.repeat(48)} end`), 'note [removed] end');
 });
 
 test('guard allows test paths only', () => {
@@ -133,7 +149,7 @@ test('coverage delta and the report quote recorded evidence', () => {
   assert.equal(budget.maxSourceFiles, 8);
   const withBudget = renderReport({ report: {}, budget });
   assert.match(withBudget, /claude-opus-4-8/);
-  assert.match(withBudget, /A human merges/);
+  assert.match(withBudget, /never merges/);
 });
 
 test('checksum comparison fails closed and the secret scan returns paths only', () => {

@@ -16,7 +16,7 @@ Use Vitest and Supertest. Build the app with `createApp` or the router factory. 
 3. Mock Prisma on the real delegate. `createDatabase('postgresql://test:test@localhost:5432/test')`, then `vi.spyOn(database.todo, 'findMany')` (or `create`, `findUnique`, `updateManyAndReturn`, `deleteMany`, `findFirst`). Restore mocks in `afterEach`. No Postgres.
 4. Assert the status and the JSON body. For validation, send the bad payload and expect `422` plus no write. For a missing row, expect `404` and `{ detail: 'Task not found.' }`.
 5. Cover the new branch and the failure next to it. A list filter needs both an empty query and a rejected query.
-6. Run `npm test --prefix backend -- tests/<file>.test.ts`. Record the command in `evidence`.
+6. Run `node scripts/agent/bounded-test.mjs test backend tests/<file>.test.ts`. Record the command in `evidence`.
 
 ## Example
 
