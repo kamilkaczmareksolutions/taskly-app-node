@@ -28,7 +28,8 @@ function coverageLines(coverage) {
   return lines;
 }
 
-const BASE64_BLOB = /[A-Za-z0-9+/]{40,}={0,2}/g;
+// Slash is excluded so a repo path is not treated as a blob. A slash splits the scan.
+const BASE64_BLOB = /[A-Za-z0-9+]{40,}={0,2}/g;
 
 export function sanitizeText(text, max = 400) {
   if (typeof text !== 'string') return '';

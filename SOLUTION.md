@@ -32,7 +32,7 @@ The API key is not left in the environment of the CLI process. `run-agent.sh` pa
 
 `changed-files.mjs` marks only the first eight testable source files as testable. `bounded-test.mjs` runs one test file and refuses a fourth failed run. Direct `npm test` is denied so the agent is steered through that script.
 
-The key is not a job-level variable. Detect also requires the pull request author to have write or admin permission. A same-repository prompt injection is still the threat: there is no shell sandbox, `--force` is on, and `reject-secret` does not decode base64. Notes in the comment are cut to 400 characters and long base64 blobs are removed. That is not a full exfiltration defense.
+The key is not a job-level variable. Detect also requires the pull request author to have write or admin permission. A same-repository prompt injection is still the threat: there is no shell sandbox, `--force` is on, and `reject-secret` does not decode base64. Notes in the comment are cut to 400 characters. A run of 40 letters or digits is removed. A slash splits that scan, so a file path stays. That is not a full exfiltration defense.
 
 `GITHUB_TOKEN` can push the bot commit and that push does not start CI. Pull request 2 recorded the follow-up as `action_required`. Verify had already passed in the same run. A GitHub App token would let that commit run `ci.yml`. Keep `[skip unit-test-agent]` so the app token does not pay for a second model call.
 
@@ -79,7 +79,7 @@ Node 22 is on the runner. Unit tests do not need Postgres. The key can call `cla
 
 ## 7. Limitations
 
-The model can write a different test each run. A same-repository diff can hide instructions. With no sandbox and with `--force`, that can try to read the key. `reject-secret` matches the raw value, not base64. Notes and reasons lose long base64 blobs, and notes stop at 400 characters. Only a write or admin author starts the agent. Production needs an egress allowlist (`step-security/harden-runner`), a spending-capped key, and the shell sandbox.
+The model can write a different test each run. A same-repository diff can hide instructions. With no sandbox and with `--force`, that can try to read the key. `reject-secret` matches the raw value, not base64. Notes and reasons lose a run of 40 letters or digits, and notes stop at 400 characters. A slash splits that scan, so a file path stays. Only a write or admin author starts the agent. Production needs an egress allowlist (`step-security/harden-runner`), a spending-capped key, and the shell sandbox.
 
 The eight-file cap is in `changed-files.mjs` and again on the patch. The three-failure cap is in `bounded-test.mjs`. A command that is not denied can ignore it. `node` and `cat` can read paths the Read deny list names. `GITHUB_TOKEN` does not retrigger workflows. The factory branch after headers are sent, and the lifespan `process.exit` timer, stay untested on purpose.
 
