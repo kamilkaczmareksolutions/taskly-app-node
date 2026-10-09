@@ -41,6 +41,7 @@ jobs:
           PR_USER: ${{ github.event.pull_request.user.login }}
           IS_DRAFT: ${{ github.event.pull_request.draft }}
           BASE_REF: ${{ github.base_ref || 'main' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           HAS_CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY != '' }}
         run: bash scripts/agent/detect.sh
       - name: Upload changed files
