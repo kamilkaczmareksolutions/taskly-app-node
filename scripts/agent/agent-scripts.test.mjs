@@ -68,6 +68,10 @@ test('classify maps source to the repo test paths and skips docs', () => {
   assert.equal(excessTestFiles(['backend/tests/a.test.ts', 'backend/tests/b.test.ts'], 1).length, 2);
   assert.deepEqual(excessFailures([{ command: 'x', exitCode: 1 }, { command: 'x', exitCode: 1 }, { command: 'x', exitCode: 1 }], 2), ['x']);
   assert.equal(sanitizeText(`note ${'A'.repeat(48)} end`), 'note [removed] end');
+  assert.equal(
+    sanitizeText('Extend frontend/src/features/todos/hooks/useTodosQuery.test.tsx'),
+    'Extend frontend/src/features/todos/hooks/useTodosQuery.test.tsx',
+  );
 });
 
 test('guard allows test paths only', () => {
