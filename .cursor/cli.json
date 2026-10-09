@@ -1,6 +1,4 @@
 {
-  "version": 1,
-  "editor": { "vimMode": false },
   "permissions": {
     "allow": [
       "Read(backend/**)",

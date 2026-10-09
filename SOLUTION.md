@@ -8,7 +8,7 @@ The agent is the Cursor CLI (`agent`), pinned by URL and SHA-256 in `scripts/age
 
 The workflow uses `pull_request`, not `pull_request_target`. `pull_request` runs the workflow from the pull request and does not give fork commits the repository secrets.
 
-The agent job checks out the head commit with `persist-credentials: false` and `contents: read`. It cannot push. The publish job is the only job with `contents: write` and `pull-requests: write`. It commits only after the guard and the verify job pass.
+`.cursor/cli.json` is the project permissions file. This CLI build rejects `version` and `editor` in that file. Those keys belong in the global config. The agent job checks out the head commit with `persist-credentials: false` and `contents: read`. It cannot push. The publish job is the only job with `contents: write` and `pull-requests: write`. It commits only after the guard and the verify job pass.
 
 `CURSOR_API_KEY` is set on two steps in the agent job: the CLI run, and the scan that follows it. It is not a job-level variable. The detect job receives only a boolean, `secrets.CURSOR_API_KEY != ''`. Fork pull requests and Dependabot are skipped before those steps, so they never receive the key. The scan reads the patch, the report, and the raw CLI log. A match fails the job. The log line names the file and does not print the key. The raw log is deleted and is not uploaded. Those steps do not use `set -x`. GitHub still masks a registered secret if it appears in a log.
 
@@ -70,13 +70,11 @@ flowchart LR
 
 ## 4. Example run
 
-Placeholder. Fill this from the demo pull request after the workflow finishes.
+Run: [Unit-test agent on the title-search pull request](https://github.com/kamilkaczmareksolutions/taskly-app-node/actions/runs/37925977823). Pull request: [feat: search todos by title](https://github.com/kamilkaczmareksolutions/taskly-app-node/pull/2). `demo/search-todos` is the same feature with no pull request and no tests.
 
-- Decisions:
-- Skills:
-- Test results:
-- Coverage delta:
-- Link:
+The agent planned six files. It tested the repository, the router, the tasks page, the todos API, and `useTodosQuery`. It skipped `types.ts` because the change is a type. Skills: `analyze-pr-diff`, `backend-unit-tests`, `frontend-unit-tests`, `run-tests-and-coverage`, `report-to-pr`.
+
+The agent recorded green commands, including 13 passing backend tests for the repository and the router. The workflow then ran the changed tests twice (not flaky) and verify passed. Coverage moved from the base by a fraction of a percent: backend statements 98.44% to 98.5%, frontend statements 99.4% to 99.42%. The bot pushed `test: cover the pull request behavior [skip unit-test-agent]`. That commit does not start a new workflow run. GitHub records the follow-up as `action_required`. Verify had already passed in the same run. A human merges.
 
 ## 5. Assumptions
 
