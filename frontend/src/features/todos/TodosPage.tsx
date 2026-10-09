@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Alert, Button, Input } from '../../design-system'
+import { useEffect, useState } from 'react'
+import { Alert, Button } from '../../design-system'
 import { SuccessNotice } from '../../components/SuccessNotice'
 import { useNotice } from '../../hooks/useNotice'
 import { DeleteTodoDialog } from './components/DeleteTodoDialog'
@@ -12,10 +12,16 @@ import { useTodosBusy } from './hooks/useTodosBusy'
 import { useTodosQuery } from './hooks/useTodosQuery'
 import { useUpdateTodoMutation } from './hooks/useUpdateTodoMutation'
 import type { Todo } from './types'
+import { selectTodos } from './utils/todos'
 
 export function TodosPage() {
-  const [titleQuery, setTitleQuery] = useState('')
-  const todosQuery = useTodosQuery(titleQuery)
+  const [search, setSearch] = useState('')
+  const [serverQuery, setServerQuery] = useState('')
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setServerQuery(search.trim()), 300)
+    return () => window.clearTimeout(timeout)
+  }, [search])
+  const todosQuery = useTodosQuery(serverQuery)
   const todos = todosQuery.data ?? []
   const filters = useTodoFilters(todos)
   const toggleTodo = useUpdateTodoMutation()
@@ -49,22 +55,16 @@ export function TodosPage() {
   return (
     <>
       <main id="main" className="page-layout">
-        <Input
-          label="Search by title"
-          placeholder="Search by title"
-          value={titleQuery}
-          onChange={(event) => setTitleQuery(event.target.value)}
-        />
         <TodosHeader
           disabled={todosQuery.isPending || busy}
           onCreate={() => setEditor('new')}
         />
         <TodoFilters
           filter={filters.filter}
-          search={filters.search}
+          search={search}
           sort={filters.sort}
           onFilterChange={filters.setFilter}
-          onSearchChange={filters.setSearch}
+          onSearchChange={setSearch}
           onSortChange={filters.setSort}
         />
         {error && (
@@ -80,7 +80,7 @@ export function TodosPage() {
           </Alert>
         )}
         <TodoList
-          todos={filters.visible}
+          todos={selectTodos(todos, filters.filter, search, filters.sort)}
           hasTodos={todos.length > 0}
           loading={todosQuery.isPending}
           failed={todosQuery.isError}
