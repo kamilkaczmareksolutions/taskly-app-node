@@ -107,6 +107,23 @@ test('focus and deleted assertions fail the diff audit', () => {
     '+  expect(response.status).toBeDefined();',
   ].join('\n');
   assert.match(auditDiff(removed).join('\n'), /weak assertion/);
+  for (const line of [
+    '+  expect(value).toBeTruthy();',
+    '+  expect(value).toBeFalsy();',
+    '+  expect(value).toBeUndefined();',
+    '+  expect(() => run()).not.toThrow();',
+    '+  expect(value).toBeInstanceOf(Error);',
+  ]) {
+    const weakened = [
+      'diff --git a/backend/tests/router.test.ts b/backend/tests/router.test.ts',
+      '--- a/backend/tests/router.test.ts',
+      '+++ b/backend/tests/router.test.ts',
+      '@@ -1 +1 @@',
+      '-  expect(response.status).toBe(200);',
+      line,
+    ].join('\n');
+    assert.match(auditDiff(weakened).join('\n'), /weak assertion/);
+  }
   const deleted = [
     'diff --git a/backend/tests/router.test.ts b/backend/tests/router.test.ts',
     '--- a/backend/tests/router.test.ts',
