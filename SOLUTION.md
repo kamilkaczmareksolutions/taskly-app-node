@@ -8,7 +8,7 @@ The agent is the Cursor CLI (`agent`), pinned by URL and SHA-256 in `scripts/age
 
 The workflow uses `pull_request`, not `pull_request_target`. `pull_request` runs the workflow from the pull request and does not give fork commits the repository secrets.
 
-The agent job checks out the head commit with `persist-credentials: false` and `contents: read`. It cannot push. The publish job is the only job with `contents: write` and `pull-requests: write`. It commits only after the guard and the verify job pass.
+`.cursor/cli.json` is the project permissions file. This CLI build rejects `version` and `editor` in that file. Those keys belong in the global config. The agent job checks out the head commit with `persist-credentials: false` and `contents: read`. It cannot push. The publish job is the only job with `contents: write` and `pull-requests: write`. It commits only after the guard and the verify job pass.
 
 `CURSOR_API_KEY` is set on two steps in the agent job: the CLI run, and the scan that follows it. It is not a job-level variable. The detect job receives only a boolean, `secrets.CURSOR_API_KEY != ''`. Fork pull requests and Dependabot are skipped before those steps, so they never receive the key. The scan reads the patch, the report, and the raw CLI log. A match fails the job. The log line names the file and does not print the key. The raw log is deleted and is not uploaded. Those steps do not use `set -x`. GitHub still masks a registered secret if it appears in a log.
 
