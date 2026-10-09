@@ -1,6 +1,11 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import type { TodoStore } from './types.js';
 import { createSchema, updateSchema, idSchema } from './validators.js';
+
+const listQuerySchema = z.object({
+  q: z.string().trim().max(120).optional(),
+});
 
 export function createTodosRouter(repository: TodoStore) {
   const router = Router();
@@ -10,7 +15,11 @@ export function createTodosRouter(repository: TodoStore) {
     res.locals.todoId = result.data;
     next();
   });
-  router.get('/', async (req, res) => res.json(await repository.list()));
+  router.get('/', async (req, res) => {
+    const parsed = listQuerySchema.safeParse(req.query);
+    if (!parsed.success) return res.status(422).json({ detail: parsed.error.issues });
+    res.json(await repository.list(parsed.data));
+  });
   router.post('/', async (req, res) => {
     const result = createSchema.safeParse(req.body);
     if (!result.success) return res.status(422).json({ detail: result.error.issues });

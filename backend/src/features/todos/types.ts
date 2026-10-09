@@ -8,7 +8,7 @@ export type Todo = z.infer<typeof todoSchema>;
 export type TodoRecord = PrismaTodo;
 export type Database = PrismaClient;
 export interface TodoStore {
-  list(): Promise<Todo[]>;
+  list(query?: { q?: string }): Promise<Todo[]>;
   get(id: number): Promise<Todo | null>;
   create(payload: TodoCreate): Promise<Todo>;
   update(id: number, payload: TodoUpdate): Promise<Todo | null>;
