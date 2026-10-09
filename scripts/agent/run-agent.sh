@@ -16,9 +16,12 @@ read_pin() {
 model="$(read_pin model)"
 timeout_seconds="$(read_pin timeout-seconds)"
 
-# --force applies edits in print mode. Deny rules in .cursor/cli.json still win.
-# Sandbox stays off so the agent can execute vitest. The deny list blocks push, commit, install, and downloads.
-timeout --signal=TERM "${timeout_seconds}" "${AGENT_BIN}" \
+# The key is passed only as --api-key. The CLI process does not inherit CURSOR_API_KEY.
+# bounded-test.mjs also strips the variable before npm. A write-capable author can still
+# change this workflow. The guard and verify jobs do not have the key.
+key="$CURSOR_API_KEY"
+timeout --signal=TERM "${timeout_seconds}" env -u CURSOR_API_KEY "${AGENT_BIN}" \
+  --api-key "$key" \
   -p \
   --force \
   --trust \
@@ -26,6 +29,7 @@ timeout --signal=TERM "${timeout_seconds}" "${AGENT_BIN}" \
   --model "${model}" \
   --output-format json \
   "${prompt}" > agent-output.json
+unset key
 
 if [ -d backend/tests ]; then
   git add -N -- backend/tests >/dev/null 2>&1 || true

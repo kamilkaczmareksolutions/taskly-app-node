@@ -19,7 +19,9 @@ function readLog(file) {
 }
 
 function runNpm(cwd, args) {
-  const result = spawnSync('npm', args, { cwd, stdio: 'inherit' });
+  const env = { ...process.env };
+  delete env.CURSOR_API_KEY;
+  const result = spawnSync('npm', args, { cwd, stdio: 'inherit', env });
   return result.status ?? 1;
 }
 

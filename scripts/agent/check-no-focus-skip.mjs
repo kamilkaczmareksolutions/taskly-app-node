@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url';
 
 const FORBIDDEN = /\b(?:it|test|describe|context)\.(?:only|skip|todo)\b|\b(?:xit|xtest|xdescribe|xcontext|fit|fdescribe)\s*\(/;
 const ASSERTION = /^\s*(?:it|test|describe)(?:\.each)?\s*\(|\bexpect\s*\(/;
+const WEAK = /\.toBe(?:Defined|Undefined|Truthy|Falsy)\s*\(|not\.toThrow\s*\(|\.toBeInstanceOf\s*\(/;
 
 function isNewFile(hunks) {
   return hunks.some((line) => line.startsWith('--- /dev/null') || line.startsWith('--- a/dev/null'));
@@ -23,6 +24,9 @@ export function auditDiff(diffText) {
       const body = line.slice(1);
       if (line.startsWith('+') && FORBIDDEN.test(body)) {
         problems.push(`${filePath}: added focused, skipped, or todo test`);
+      }
+      if (line.startsWith('+') && WEAK.test(body)) {
+        problems.push(`${filePath}: added a weak assertion`);
       }
       if (!ASSERTION.test(body)) continue;
       if (line.startsWith('+')) addedAssertions += 1;

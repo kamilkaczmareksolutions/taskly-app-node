@@ -73,11 +73,14 @@ test('classify maps source to the repo test paths and skips docs', () => {
 test('guard allows test paths only', () => {
   assert.deepEqual(disallowedPaths([
     'backend/tests/router.test.ts',
-    'backend/tests/fixture.ts',
     'frontend/src/lib/http.test.ts',
     'frontend/src/features/todos/TodoList.test.tsx',
     'frontend/src/test/queryWrapper.tsx',
   ]), []);
+  assert.deepEqual(disallowedPaths([
+    'backend/tests/fixture.ts',
+    'frontend/src/test/setup.ts',
+  ]), ['backend/tests/fixture.ts', 'frontend/src/test/setup.ts']);
   assert.deepEqual(disallowedPaths(['backend/src/factory.ts', 'frontend/src/App.tsx', '../secrets']), [
     'backend/src/factory.ts',
     'frontend/src/App.tsx',
@@ -103,7 +106,7 @@ test('focus and deleted assertions fail the diff audit', () => {
     '-  expect(response.status).toBe(200);',
     '+  expect(response.status).toBeDefined();',
   ].join('\n');
-  assert.equal(auditDiff(removed).length, 0);
+  assert.match(auditDiff(removed).join('\n'), /weak assertion/);
   const deleted = [
     'diff --git a/backend/tests/router.test.ts b/backend/tests/router.test.ts',
     '--- a/backend/tests/router.test.ts',

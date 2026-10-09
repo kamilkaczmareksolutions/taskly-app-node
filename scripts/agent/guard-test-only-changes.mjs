@@ -2,10 +2,11 @@ import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
 const ALLOWED = [
-  /^backend\/tests\/.+/,
+  /^backend\/tests\/.+\.test\.ts$/,
   /^frontend\/src\/.+\.test\.ts$/,
   /^frontend\/src\/.+\.test\.tsx$/,
-  /^frontend\/src\/test\/.+/,
+  // The one shared hook wrapper. setup.ts and fixture files stay out.
+  /^frontend\/src\/test\/queryWrapper\.tsx$/,
 ];
 
 export function disallowedPaths(paths) {
