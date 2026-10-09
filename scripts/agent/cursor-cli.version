@@ -1,0 +1,9 @@
+# Pinned Cursor CLI for the unit-test agent.
+# Bump: open https://cursor.com/install (the shell script, not the marketing page),
+# copy the linux/x64 DOWNLOAD_URL, download that tarball, and replace sha256 with
+# the output of `sha256sum`. Do not pipe the rolling installer into bash.
+# model is the explicit CLI slug from `agent --help` (example: gpt-5, claude-opus-4-8).
+version=2026.10.01-e373342
+url=https://downloads.cursor.com/lab/2026.10.01-e373342/linux/x64/agent-cli-package.tar.gz
+sha256=a79726c6e644520e993970be4c45775a6889802b67abe461a677a53219ae28e8
+model=claude-opus-4-8

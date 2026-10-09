@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "editor": { "vimMode": false },
+  "permissions": {
+    "allow": [
+      "Read(**)",
+      "Write(backend/tests/**)",
+      "Write(frontend/src/**/*.test.ts)",
+      "Write(frontend/src/**/*.test.tsx)",
+      "Write(frontend/src/test/**)",
+      "Write(agent-report.json)",
+      "Shell(npm:*)",
+      "Shell(npx:vitest*)",
+      "Shell(node:scripts/agent/*)",
+      "Shell(cat)",
+      "Shell(ls)",
+      "Shell(rg)",
+      "Shell(git:diff*)",
+      "Shell(git:log*)",
+      "Shell(git:status)"
+    ],
+    "deny": [
+      "Shell(git:push*)",
+      "Shell(git:commit*)",
+      "Shell(git:add*)",
+      "Shell(gh)",
+      "Shell(gh:*)",
+      "Shell(curl)",
+      "Shell(curl:*)",
+      "Shell(wget)",
+      "Shell(wget:*)",
+      "Shell(npm:install*)",
+      "Shell(npm:i)",
+      "Shell(npm:i *)",
+      "Shell(npm:ci*)",
+      "Shell(rm)",
+      "Shell(rm:*)",
+      "Write(package.json)",
+      "Write(package-lock.json)",
+      "Write(**/package.json)",
+      "Write(**/package-lock.json)",
+      "Write(.github/**)",
+      "Write(.cursor/**)",
+      "Write(scripts/**)",
+      "Write(**/.env*)",
+      "Write(.env*)",
+      "Read(.env*)",
+      "Read(**/.env*)",
+      "WebFetch(*)",
+      "Mcp(*:*)"
+    ]
+  }
+}
