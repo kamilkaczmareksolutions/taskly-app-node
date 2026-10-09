@@ -11,6 +11,15 @@ backend/src/generated/prisma/
 # Test coverage
 coverage/
 
+# Unit-test agent output
+agent-attempts.json
+agent-report.json
+agent-report.md
+agent.patch
+agent-output.json
+changed-files.json
+report.md
+
 # Local environment variables
 .env
 .env.*

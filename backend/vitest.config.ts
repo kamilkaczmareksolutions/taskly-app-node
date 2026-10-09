@@ -11,8 +11,15 @@ export default defineConfig({
       reporter: ['text', 'html', 'lcov', 'json-summary'],
       reportsDirectory: 'coverage',
       thresholds: {
-        perFile: true,
-        'src/features/todos/{validators,mappers}.ts': {
+        // Aggregate floors. The two entries below keep the existing per-file 100% bar.
+        statements: 90,
+        branches: 85,
+        functions: 90,
+        lines: 90,
+        'src/features/todos/validators.ts': {
+          statements: 100, branches: 100, functions: 100, lines: 100,
+        },
+        'src/features/todos/mappers.ts': {
           statements: 100, branches: 100, functions: 100, lines: 100,
         },
       },

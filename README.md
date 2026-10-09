@@ -1,5 +1,27 @@
 # Taskly App Node
 
+## Quality automation
+
+From the repository root, after Node.js 22.12 or newer is installed:
+
+```sh
+cd backend
+npm ci
+npm run typecheck
+npm test
+npm run test:coverage
+cd ..
+cd frontend
+npm ci
+npm run typecheck
+npm test
+npm run test:coverage
+cd ..
+node --test scripts/agent/agent-scripts.test.mjs
+```
+
+Pull requests run the same typecheck and coverage in [`.github/workflows/ci.yml`](.github/workflows/ci.yml). [`.github/workflows/unit-test-agent.yml`](.github/workflows/unit-test-agent.yml) can add tests for the diff. It proposes a commit. It does not merge. See [SOLUTION.md](SOLUTION.md).
+
 ## Setup
 
 ```sh
